@@ -21,3 +21,6 @@ rad.json
 *.flf
 #Test results file
 TestResults.xml
+#Path to new virtual environment
+path-to-new-venv/
+venv/
