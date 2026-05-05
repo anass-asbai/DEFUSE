@@ -1,88 +1,82 @@
 import psutil
-import os
-import winreg
-import socket
-
-
-MALWARE_NAME = "notepad.exe"  
-MALWARE_PATH = "\\notepad.exe"
+import time
 
 
 # =========================
-# 2. KILL PROCESS
+# CONFIG
 # =========================
-def kill_malware_process():
+TARGET_PROCESS = "notepad.exe"
+SIMULATOR_SCRIPT_KEYWORD = "simulation.py"
+
+SYSTEM_PROCESSES = {
+    "wsl.exe",
+    "explorer.exe",
+    "system",
+    "wininit.exe",
+    "services.exe",
+    "csrss.exe",
+    "python.exe"  # نحميه إلا ما تأكدناش أنه simulator
+}
+
+
+# =========================
+# LOG FUNCTION
+# =========================
+def log(msg):
+    print(msg)
+    with open("defuse_log.txt", "a") as f:
+        f.write(msg + "\n")
+
+
+# =========================
+# KILL TARGET PROCESS (NOTEPAD)
+# =========================
+def kill_notepad():
     for proc in psutil.process_iter(['pid', 'name']):
         try:
-            if MALWARE_NAME.lower() in proc.info['name'].lower():
-                print(f"[+] Killing process: {proc.info['name']} (PID {proc.info['pid']})")
-                psutil.Process(proc.info['pid']).terminate()
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            if proc.info['name'] and TARGET_PROCESS in proc.info['name'].lower():
+                log(f"[+] Killing Notepad PID: {proc.pid}")
+                proc.kill()
+        except:
             pass
 
 
 # =========================
-# 3. REMOVE FILE
+# FIND + KILL SIMULATOR (ROOT CAUSE)
 # =========================
-def remove_malware_file():
-    if os.path.exists(MALWARE_PATH):
+def kill_simulator():
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
         try:
-            os.remove(MALWARE_PATH)
-            print("[+] Malware file deleted")
-        except Exception as e:
-            print(f"[-] Error deleting file: {e}")
+            cmd = " ".join(proc.cmdline() or [])
+
+            # نلقاو script اللي كيعيد تشغيل notepad
+            if SIMULATOR_SCRIPT_KEYWORD in cmd.lower():
+
+                log(f"\n[!] Simulator detected PID: {proc.pid}")
+                log(f"[!] Command: {cmd}")
+
+                # safety check
+                if proc.name().lower() in SYSTEM_PROCESSES:
+                    log("[SAFE] Skipping system process")
+                    continue
+
+                log(f"[🔥] Killing simulator process: {proc.pid}")
+                proc.kill()
+
+        except:
+            pass
 
 
 # =========================
-# 4. REMOVE STARTUP PERSISTENCE
-# =========================
-def remove_startup_entry():
-    try:
-        key = winreg.OpenKey(
-            winreg.HKEY_CURRENT_USER,
-            r"Software\Microsoft\Windows\CurrentVersion\Run",
-            0,
-            winreg.KEY_ALL_ACCESS
-        )
-
-        winreg.DeleteValue(key, "Malware")
-        winreg.CloseKey(key)
-
-        print("[+] Startup entry removed")
-
-    except FileNotFoundError:
-        print("[!] No startup entry found")
-    except Exception as e:
-        print(f"[-] Registry error: {e}")
-
-
-# =========================
-# 5. GET ATTACKER IP (SIMPLIFIED)
-# =========================
-def get_attacker_ip():
-    try:
-        hostname = socket.gethostname()
-        local_ip = socket.gethostbyname(hostname)
-        print(f"[+] Local/Observed IP: {local_ip}")
-        return local_ip
-    except Exception as e:
-        print(f"[-] IP error: {e}")
-        return None
-
-
-# =========================
-# 6. MAIN FUNCTION
+# REAL-TIME LOOP
 # =========================
 def main():
-    print("=== Malware Removal Tool Started ===")
+    log("=== DEFUSE REAL-TIME ANTI-SIMULATOR STARTED ===")
 
-    kill_malware_process()
-    remove_startup_entry()
-    remove_malware_file()
-    ip = get_attacker_ip()
-
-    print("=== Done ===")
-    print(f"Attacker IP (simulated): {ip}")
+    while True:
+        kill_notepad()
+        kill_simulator()
+        time.sleep(2)
 
 
 if __name__ == "__main__":

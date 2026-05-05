@@ -1,0 +1,7 @@
+=== DEFUSE REAL-TIME ANTI-SIMULATOR STARTED ===
+[+] Killing Notepad PID: 9316
+[+] Killing Notepad PID: 16200
+[+] Killing Notepad PID: 19680
+[+] Killing Notepad PID: 20084
+[+] Killing Notepad PID: 23204
+[+] Killing Notepad PID: 5940
